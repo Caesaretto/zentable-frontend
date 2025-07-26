@@ -1,6 +1,26 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
+
+  import { Settings, LayoutGrid, Calendar, Clock } from 'lucide-svelte';
+
+  let restaurantName = 'il tuo locale';
+
+  onMount(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: restaurantData, error } = await supabase
+        .from('ristoranti')
+        .select('nome')
+        .eq('user_id', user.id)
+        .single();
+
+      if (restaurantData && restaurantData.nome) {
+        restaurantName = restaurantData.nome;
+      }
+    }
+  });
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -9,66 +29,162 @@
 </script>
 
 <div class="dashboard-container">
-  <h1>Benvenuto su Zentable!</h1>
-  <p>Scegli uno strumento per iniziare a gestire il tuo locale.</p>
+  <div class="main-content">
+    <a href="/">
+      <img src="/logo.png" alt="Logo Zentable" class="logo">
+    </a>
 
-  <div class="navigation-grid">
-    <a href="/dashboard/timeline" class="nav-card">
-      <h2>🗓️ Timeline</h2>
-      <p>Visualizza e gestisci le prenotazioni.</p>
-    </a>
-    <a href="/dashboard/tavoli" class="nav-card">
-      <h2>🪑 Gestione Tavoli</h2>
-      <p>Crea e modifica i tavoli della tua sala.</p>
-    </a>
-    <a href="/dashboard/orari" class="nav-card">
-      <h2>🕰️ Gestione Orari</h2>
-      <p>Imposta i tuoi giorni e turni di apertura.</p>
-    </a>
-    <a href="/dashboard/impostazioni" class="nav-card">
-      <h2>⚙️ Impostazioni</h2>
-      <p>Modifica i dati del tuo ristorante.</p>
-    </a>
+    <hgroup>
+      <h1>La Tua <span class="accent">ZEN</span>board</h1>
+      <h2>{restaurantName}</h2>
+    </hgroup>
+
+    <div class="navigation-grid">
+
+      <div class="nav-item">
+        <a href="/dashboard/timeline" class="nav-button">
+          <Calendar color="black" size={60} strokeWidth={1.5} />
+        </a>
+        <div class="nav-label">Prenotazioni</div>
+      </div>
+
+      <div class="nav-item">
+        <a href="/dashboard/tavoli" class="nav-button">
+          <LayoutGrid color="black" size={60} strokeWidth={1.5} />
+        </a>
+        <div class="nav-label">Tavoli</div>
+      </div>
+
+      <div class="nav-item">
+        <a href="/dashboard/orari" class="nav-button">
+          <Clock color="black" size={60} strokeWidth={1.5} />
+        </a>
+        <div class="nav-label">Orari</div>
+      </div>
+
+      <div class="nav-item">
+        <a href="/dashboard/impostazioni" class="nav-button">
+          <Settings color="black" size={60} strokeWidth={1.5} />
+        </a>
+        <div class="nav-label">Impostazioni</div>
+      </div>
+
+    </div>
   </div>
 
-  <button class="logout-button" on:click={handleLogout}>
-    Logout
-  </button>
+  <button class="logout-button" on:click={handleLogout}>Logout</button>
 </div>
 
 <style>
-  .dashboard-container { max-width: 800px; margin: 40px auto; font-family: sans-serif; }
-  h1 { margin-bottom: 0.5rem; }
-  p { margin-top: 0; color: #666; }
+  .dashboard-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+    box-sizing: border-box;
+    text-align: center;
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .logo {
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    width: 120px;
+  }
+
+  hgroup {
+      margin-bottom: 2.5rem; 
+  }
+  h1 {
+      font-size: 2rem;
+  }
+  h2 {
+    font-weight: 300;
+    color: var(--muted-color);
+    font-size: 1.1rem;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .accent {
+      color: var(--primary);
+  }
+
   .navigation-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-top: 30px;
-    margin-bottom: 30px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 2.5rem;
+    width: 100%;
   }
-  .nav-card {
-    display: block;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+
+  .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+  }
+
+  .nav-button {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 200px;
+    height: 200px;
     text-decoration: none;
-    color: inherit;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .nav-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  .nav-card h2 { margin-top: 0; }
-  .logout-button {
-    padding: 10px 20px;
-    background-color: #dc3545;
-    color: white;
+    background-image: url('/pennellata-nera.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: transform 0.2s;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    float: right;
+    background-color: transparent;
+  }
+
+  .nav-button:hover {
+    transform: scale(1.05);
+  }
+
+  .nav-label {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 1rem;
+      color: var(--text-color);
+  }
+
+  .logout-button {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    padding: 0.6rem 1.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 2rem; /* Spazio che lo spinge in basso */
+  }
+  .logout-button:hover {
+      background-color: var(--primary-hover);
+      border-color: var(--primary-hover);
+  }
+
+  @media (max-width: 992px) {
+    .navigation-grid {
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-button {
+        width: 180px;
+        height: 180px;
+    }
   }
 </style>

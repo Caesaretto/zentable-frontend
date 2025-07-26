@@ -1,70 +1,96 @@
-<div class="hero-container">
-  <main class="hero-content">
-    <h1>Zentable</h1>
-    <p class="tagline">Prenotazioni per ristoranti. Restando Zen.</p>
-    <p class="description">
-      Un gestionale semplice, visivo e senza fronzoli, pensato per chi lavora e non ha tempo da perdere.
-    </p>
-    <div class="cta-buttons">
-      <a href="/register" class="btn btn-primary">Crea il Tuo Account Gratis</a>
-      <a href="/login" class="btn btn-secondary">Già Cliente? Accedi</a>
-    </div>
-  </main>
-</div>
+<main class="container">
+  
+  <img src="/logo.png" alt="Logo Zentable" class="logo">
+  
+  <div class="headings">
+    <h2>Gestisce le prenotazioni del tuo ristorante.</h2>
+    <p class="tagline">Mentre tu resti <span class="accent">zen.</span></p>
+  </div>
+  
+  <p class="description">
+    Una piattaforma di gestione intelligente,<br>pensata per chi lavora da chi lavora (e resta zen).
+  </p>
+
+  <div class="cta-buttons">
+    <a href="/register" class="btn-brush primary">
+      <span>Diventa<br>Zen</span>
+    </a>
+    <a href="/login" class="btn-brush secondary">
+      <span>Accedi</span>
+    </a>
+  </div>
+
+</main>
 
 <style>
-  .hero-container {
+  .container {
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    justify-content: center;
-    min-height: 80vh;
+    height: 100vh;
+    padding: 2rem;
+    box-sizing: border-box;
     text-align: center;
-    font-family: sans-serif;
   }
-  .hero-content {
-    max-width: 600px;
-    padding: 20px;
+
+  .logo {
+    width: 180px;
+    height: auto;
+    margin-bottom: 2rem;
   }
-  h1 {
-    font-size: 4rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-  }
-  .tagline {
-    font-size: 1.5rem;
-    color: #555;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-  }
-  .description {
-    font-size: 1.1rem;
-    color: #666;
-    line-height: 1.6;
-  }
-  .cta-buttons {
-    margin-top: 40px;
+
+  .headings { margin-bottom: 1.5rem; }
+  .headings h2 { font-size: 1.6rem; font-weight: 700; margin: 0; padding: 0; white-space: nowrap; }
+  .tagline { font-size: 1.4rem; color: var(--muted-color); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 300; }
+  .tagline .accent { color: var(--primary); font-weight: 700; }
+  .description { font-size: 1rem; line-height: 1.6; margin-bottom: 1rem; }
+  .cta-buttons { margin-top: 2rem; display: flex; gap: 2.5rem; align-items: center; }
+
+  .btn-brush {
+    position: relative;
     display: flex;
     justify-content: center;
-    gap: 20px;
-  }
-  .btn {
-    display: inline-block;
-    padding: 12px 24px;
+    align-items: center;
+    width: 180px;
+    height: 180px;
     text-decoration: none;
-    font-size: 1rem;
-    border-radius: 8px;
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     transition: transform 0.2s;
+    line-height: 1.2;
+    box-sizing: border-box;
+    border: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
   }
-  .btn:hover {
-    transform: translateY(-2px);
+
+  .btn-brush span {
+    position: relative;
+    z-index: 1;
   }
-  .btn-primary {
-    background-color: #007bff;
-    color: white;
+
+  .btn-brush:hover {
+    transform: scale(1.05);
   }
-  .btn-secondary {
-    background-color: #f0f0f0;
-    color: #333;
-    border: 1px solid #ccc;
+
+  /* Pulsante SINISTRA (Registrati): Sfondo NERO, Testo ROSSO */
+  .btn-brush.primary {
+    background-image: url('/pennellata-nera.png');
+    color: var(--primary);
+  }
+
+  /* Pulsante DESTRA (Accedi): Sfondo ROSSO, Testo NERO */
+  .btn-brush.secondary {
+    background-image: url('/pennellata-rossa.png');
+    color: var(--text-color);
+  }
+
+  @media (max-width: 768px) {
+    .headings h2 { white-space: normal; }
+    .cta-buttons { flex-direction: column; gap: 2rem; }
+    .logo, .btn-brush { width: 150px; height: 150px; }
   }
 </style>

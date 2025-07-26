@@ -18,56 +18,120 @@
 
       if (error) throw error;
 
-      message = 'Registrazione avvenuta! Controlla la tua email per confermare l\'account e poi accedi.';
+      message = 'Registrazione avvenuta! Controlla la tua email per confermare l\'account.';
       
-      // Dopo 3 secondi, reindirizziamo l'utente alla pagina di login
-      setTimeout(() => {
-        goto('/login');
-      }, 3000);
-
     } catch (error) {
-      message = error.message;
+       if (error instanceof Error) {
+        message = error.message;
+      }
     } finally {
       loading = false;
     }
   }
 </script>
 
-<div class="container">
-  <h1>Registra il Tuo Ristorante</h1>
-  <p>Crea un nuovo account su Zentable per iniziare.</p>
-  
-  <form on:submit|preventDefault={handleSignUp}>
-    <div class="form-group">
-      <label for="email">La tua Email</label>
-      <input id="email" type="email" bind:value={email} placeholder="es. mario@ristorante.it" required />
-    </div>
-    <div class="form-group">
-      <label for="password">Scegli una Password</label>
-      <input id="password" type="password" bind:value={password} required />
-    </div>
-    <button type="submit" disabled={loading}>
-      {loading ? 'Creazione account in corso...' : 'Registrati'}
-    </button>
-  </form>
+<main class="container">
+  <article>
+    <a href="/">
+      <img src="/logo.png" alt="Logo Zentable" class="logo">
+    </a>
+    
+    <hgroup>
+      <h1>Crea il tuo account</h1>
+      <h2>Inizia a gestire le tue<br>prenotazioni in modo <span class="accent">ZEN.</span></h2>
+    </hgroup>
+    
+    <form on:submit|preventDefault={handleSignUp}>
+      <input type="email" bind:value={email} name="email" placeholder="Email" aria-label="Email" autocomplete="email" required />
+      <input type="password" bind:value={password} name="password" placeholder="Scegli una password sicura" aria-label="Password" autocomplete="new-password" required />
 
-  {#if message}
-    <p class="message">{message}</p>
-  {/if}
+      <button type="submit" class="contrast" disabled={loading}>
+        {loading ? 'Creazione account...' : 'Registrati Gratis'}
+      </button>
+    </form>
 
-  <p class="link-container">
-    Hai già un account? <a href="/login">Accedi ora</a>
-  </p>
-</div>
+    {#if message}
+      <p class="message">{message}</p>
+    {/if}
+    
+    <footer>
+      Sei già Zen? <a href="/login">Accedi</a>
+    </footer>
+  </article>
+</main>
 
 <style>
-  .container { max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; font-family: sans-serif; }
-  .form-group { margin-bottom: 15px; }
-  label { display: block; margin-bottom: 5px; }
-  input { width: 100%; padding: 8px; box-sizing: border-box; }
-  button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
-  button:disabled { background-color: #ccc; }
-  .message { margin-top: 15px; text-align: center; }
-  .link-container { margin-top: 20px; text-align: center; font-size: 0.9rem; }
-  a { color: #007bff; }
+  .container {
+    display: grid;
+    place-items: center;
+    min-height: 100svh; 
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  article {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 400px;
+    padding: 1.5rem;
+    margin: 0;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+    border-radius: var(--pico-border-radius);
+  }
+
+  .logo {
+      width: 100px;
+      margin-bottom: 0.5rem;
+  }
+
+  hgroup {
+      margin-bottom: 0.5rem;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+    white-space: nowrap;
+    margin: 0;
+  }
+  
+  h2 {
+    font-weight: 300;
+    color: var(--muted-color);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+    margin-top: 0.5rem; /* Aggiunge spazio sotto h1 */
+  }
+
+  .accent {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  form {
+      width: 100%;
+  }
+
+  input, button {
+      padding: 0.75rem;
+  }
+  
+  footer {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  footer a {
+    color: var(--primary);
+    font-weight: 700;
+  }
+  
+  .message {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+  }
 </style>

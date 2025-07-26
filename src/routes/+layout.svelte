@@ -1,54 +1,43 @@
 <script>
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabaseClient';
-  import { goto } from '$app/navigation';
-
-  let notification = { show: false, message: '' };
-
-  onMount(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Questo si attiva quando l'utente conferma l'email
-      if (event === 'SIGNED_IN' && session) {
-        showNotification('Email confermata con successo! Verrai reindirizzato.');
-
-        // Reindirizza alla pagina delle impostazioni del ristorante dopo 2 secondi
-        setTimeout(() => {
-          goto('/dashboard/impostazioni');
-        }, 2000);
-      }
-    });
-
-    // Pulisce il listener quando il componente viene distrutto
-    return () => subscription.unsubscribe();
-  });
-
-  function showNotification(message) {
-    notification = { show: true, message: message };
-    setTimeout(() => {
-      notification = { show: false, message: '' };
-    }, 4000); // Il messaggio scompare dopo 4 secondi
-  }
+  import '@picocss/pico/css/pico.min.css';
 </script>
-
-{#if notification.show}
-  <div class="toast">
-    {notification.message}
-  </div>
-{/if}
 
 <slot />
 
-<style>
-  .toast {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #28a745;
-    color: white;
-    padding: 16px;
-    border-radius: 8px;
-    z-index: 100;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+<style global>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;700&display=swap');
+
+  :root {
+    --font-family: 'Poppins', sans-serif;
+    --primary: #b91c1c; 
+    --text-color: #212529;
+    --text-on-dark: #fdfdfd;
+    --muted-color: #6c757d;
+    --background-color: #fdfdfd;
+    --pico-font-family: var(--font-family);
+  }
+
+  :global(body, html) {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--background-color);
+    /* Pattern a quadri più visibile */
+    background-image:
+      linear-gradient(rgba(0,0,0,0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.15) 1px, transparent 1px);
+    background-size: 30px 30px;
+    font-family: var(--font-family);
+    color: var(--text-color);
+    font-weight: 300;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 </style>
