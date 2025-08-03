@@ -1,28 +1,37 @@
 <script>
   export let data;
-  const { ristorante } = data;
-
+  let { ristorante, prenotazioni } = data;
+  
   import { supabase } from '$lib/supabaseClient';
+  import { onMount } from 'svelte';
 
   let bookingData = {
     date: new Date().toISOString().split('T')[0],
-    time: '', // L'ora verrà scelta cliccando un pulsante
+    time: '',
     guests: 2,
     name: '',
     phone: ''
   };
-
+  
   let loading = false;
   let message = { text: '', type: '' };
   let timeSlots = [];
+  let availability = {};
+  let totalCapacity = 0;
 
-  // Funzione per generare gli slot orari disponibili
+  function calculateTotalCapacity() {
+    totalCapacity = ristorante.tavoli.reduce((acc, table) => acc + table.posti, 0);
+  }
+
   function generateAvailableSlots() {
-    const dayOfWeek = new Date(bookingData.date).getUTCDay();
+    const dateParts = bookingData.date.split('-').map(Number);
+    const localDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    const dayOfWeek = localDate.getDay();
     const dayIndex = dayOfWeek === 0 ? 7 : dayOfWeek;
     const schedule = ristorante.orari.find(o => o.giorno_settimana === dayIndex);
-
+    
     timeSlots = [];
+    bookingData.time = '';
     if (!schedule) return;
 
     const addSlots = (start, end) => {
@@ -30,20 +39,73 @@
       let [h_start, m_start] = start.split(':').map(Number);
       let [h_end, m_end] = end.split(':').map(Number);
       if (h_end < h_start) h_end += 24;
-
-      let currentTime = new Date();
+      
+      let currentTime = new Date(bookingData.date + 'T00:00:00');
       currentTime.setHours(h_start, m_start, 0, 0);
-      const endTime = new Date();
+      const endTime = new Date(bookingData.date + 'T00:00:00');
       endTime.setHours(h_end, m_end, 0, 0);
+      
+      const now = new Date();
+      const isToday = new Date(bookingData.date).toDateString() === now.toDateString();
 
       while (currentTime < endTime) {
-        timeSlots.push(currentTime.toTimeString().substring(0, 5));
-        currentTime.setMinutes(currentTime.getMinutes() + 15); // Slot ogni 15 min
+        if (!(isToday && currentTime < now)) {
+          timeSlots.push(currentTime.toTimeString().substring(0, 5));
+        }
+        currentTime.setMinutes(currentTime.getMinutes() + 15);
       }
     };
 
     addSlots(schedule.pranzo_apertura, schedule.pranzo_chiusura);
     addSlots(schedule.cena_apertura, schedule.cena_chiusura);
+  }
+  
+  function calculateAvailability() {
+    const newAvailability = {};
+    for (const slot of timeSlots) {
+        const [hour, minute] = slot.split(':').map(Number);
+        const slotTime = new Date(bookingData.date);
+        slotTime.setHours(hour, minute, 0, 0);
+
+        let occupiedSeats = 0;
+        for (const booking of prenotazioni) {
+            const startTime = new Date(booking.data_ora);
+            const endTime = new Date(booking.data_ora_fine);
+            if (slotTime >= startTime && slotTime < endTime) {
+                occupiedSeats += booking.numero_coperti;
+            }
+        }
+        newAvailability[slot] = totalCapacity - occupiedSeats;
+    }
+    availability = newAvailability;
+  }
+
+  async function loadDataAndCalculate() {
+      const date = new Date(bookingData.date);
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+      const day = date.getUTCDate();
+      const startDate = new Date(Date.UTC(year, month, day)).toISOString();
+      const endDate = new Date(Date.UTC(year, month, day + 1)).toISOString();
+      
+      const { data } = await supabase.from('prenotazioni')
+          .select('tavolo_id, data_ora, data_ora_fine, numero_coperti')
+          .eq('ristorante_id', ristorante.id)
+          .gte('data_ora', startDate)
+          .lt('data_ora', endDate);
+      prenotazioni = data || [];
+      
+      generateAvailableSlots();
+      calculateAvailability();
+  }
+  
+  onMount(() => {
+    calculateTotalCapacity();
+    loadDataAndCalculate();
+  });
+
+  $: if (bookingData.guests) {
+      calculateAvailability();
   }
 
   async function handleSubmit() {
@@ -53,18 +115,36 @@
     }
     loading = true;
     setMessage('', '');
-
-    const [hour, minute] = bookingData.time.split(':');
-    const bookingDateTime = new Date(bookingData.date);
-    bookingDateTime.setHours(hour, minute, 0, 0);
+    
+    const [hour, minute] = bookingData.time.split(':').map(Number);
+    const bookingStart = new Date(bookingData.date);
+    bookingStart.setHours(hour, minute, 0, 0);
 
     const durationHours = 1.5;
-    const endTime = new Date(bookingDateTime.getTime() + durationHours * 60 * 60 * 1000);
+    const bookingEnd = new Date(bookingStart.getTime() + durationHours * 60 * 60 * 1000);
+
+    const suitableTables = ristorante.tavoli.filter(t => t.posti >= bookingData.guests);
+    const occupiedTableIds = new Set();
+    for (const booking of prenotazioni) {
+        const existingStart = new Date(booking.data_ora);
+        const existingEnd = new Date(booking.data_ora_fine);
+        if (bookingStart < existingEnd && bookingEnd > existingStart) {
+            occupiedTableIds.add(booking.tavolo_id);
+        }
+    }
+    const availableTable = suitableTables.find(t => !occupiedTableIds.has(t.id));
+
+    if (!availableTable) {
+        setMessage('Spiacenti, non ci sono tavoli disponibili per questa richiesta.', 'error');
+        loading = false;
+        return;
+    }
 
     const { error } = await supabase.from('prenotazioni').insert({
       ristorante_id: ristorante.id,
-      data_ora: bookingDateTime.toISOString(),
-      data_ora_fine: endTime.toISOString(),
+      tavolo_id: availableTable.id,
+      data_ora: bookingStart.toISOString(),
+      data_ora_fine: bookingEnd.toISOString(),
       numero_coperti: bookingData.guests,
       nome_cliente: bookingData.name,
       telefono_cliente: bookingData.phone
@@ -74,6 +154,13 @@
       setMessage(`Errore: ${error.message}`, 'error');
     } else {
       setMessage('Prenotazione confermata! Grazie.', 'success');
+      prenotazioni = [...prenotazioni, { 
+          tavolo_id: availableTable.id, 
+          data_ora: bookingStart.toISOString(),
+          data_ora_fine: bookingEnd.toISOString(),
+          numero_coperti: bookingData.guests
+      }];
+      calculateAvailability();
     }
     loading = false;
   }
@@ -82,84 +169,123 @@
     message = { text, type };
     setTimeout(() => { message = { text: '', type: '' }; }, duration);
   }
-
-  // Calcola gli slot disponibili al primo caricamento
-  generateAvailableSlots();
 </script>
 
-<div class="booking-page">
-  <header>
-    <h1>Benvenuto da {ristorante.nome}</h1>
-    <p>{ristorante.indirizzo}</p>
-    <p>Tel: {ristorante.telefono}</p>
-  </header>
+<main class="container">
+  <article>
+    <header>
+      <img src="/logo.png" alt="Logo Zentable" class="logo">
+      <hgroup>
+        <h1>{ristorante.nome}</h1>
+        <h2>Effettua una prenotazione</h2>
+      </hgroup>
+    </header>
 
-  <main>
-    <h2>Effettua una Prenotazione</h2>
-    <form class="booking-form" on:submit|preventDefault={handleSubmit}>
-      <div class="form-group">
-        <label for="name">Il tuo Nome</label>
-        <input type="text" id="name" bind:value={bookingData.name} required>
+    <form on:submit|preventDefault={handleSubmit}>
+      <div class="form-grid">
+        <label>
+          Il Tuo Nome
+          <input type="text" bind:value={bookingData.name} required>
+        </label>
+        <label>
+          Il Tuo Telefono
+          <input type="tel" bind:value={bookingData.phone} required>
+        </label>
       </div>
-      <div class="form-group">
-        <label for="phone">Il tuo Telefono</label>
-        <input type="tel" id="phone" bind:value={bookingData.phone} required>
+      <div class="form-grid">
+        <label>
+          Data
+          <input type="date" bind:value={bookingData.date} on:change={loadDataAndCalculate} required>
+        </label>
+        <label>
+          Coperti
+          <input type="number" bind:value={bookingData.guests} min="1" required>
+        </label>
       </div>
-      <div class="form-group-inline">
-        <div class="form-group">
-          <label for="date">Data</label>
-          <input type="date" id="date" bind:value={bookingData.date} on:change={generateAvailableSlots} required>
-        </div>
-        <div class="form-group">
-          <label for="guests">Coperti</label>
-          <input type="number" id="guests" bind:value={bookingData.guests} min="1" required>
-        </div>
-      </div>
-
-      <div class="form-group">
+      
+      <div class="time-slots-section">
         <label>Seleziona un orario</label>
         <div class="time-slots-container">
           {#if timeSlots.length > 0}
             {#each timeSlots as slot}
+              {@const availableSeats = availability[slot] ?? totalCapacity}
               <button 
                 type="button" 
                 class="time-slot-btn" 
                 class:selected={bookingData.time === slot}
+                disabled={availableSeats < bookingData.guests}
                 on:click={() => bookingData.time = slot}
+                title={availableSeats < bookingData.guests ? 'Non ci sono abbastanza posti' : `${availableSeats} posti liberi`}
               >
                 {slot}
               </button>
             {/each}
           {:else}
-            <p>Nessun orario disponibile per la data selezionata. Il locale potrebbe essere chiuso.</p>
+            <p class="closed-notice">Nessun orario disponibile per la data selezionata.</p>
           {/if}
         </div>
       </div>
 
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading} class="contrast">
         {loading ? 'Invio in corso...' : 'Prenota il Tuo Tavolo'}
       </button>
     </form>
-
+    
     {#if message.text}
       <div class="message {message.type}">{message.text}</div>
     {/if}
-  </main>
-</div>
+  </article>
+</main>
 
 <style>
-  .booking-page { max-width: 600px; margin: 40px auto; font-family: sans-serif; }
-  header { text-align: center; margin-bottom: 40px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
-  .booking-form { display: grid; gap: 20px; }
-  .form-group { display: flex; flex-direction: column; }
-  .form-group-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  label { margin-bottom: 5px; font-size: 0.9rem; color: #555; }
-  input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-  button { padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer; }
-  .time-slots-container { display: flex; flex-wrap: wrap; gap: 10px; }
-  .time-slot-btn { background-color: #f0f0f0; border: 1px solid #ccc; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-  .time-slot-btn.selected { background-color: #007bff; color: white; border-color: #0056b3; }
-  .message { padding: 10px; border-radius: 5px; margin-top: 20px; text-align: center; }
+  main { display: grid; place-items: center; min-height: 100svh; padding: 1rem; box-sizing: border-box; }
+  article { width: 100%; max-width: 550px; margin: 0; padding: 1.5rem; }
+  header { text-align: center; margin-bottom: 1.5rem; }
+  .logo { width: 80px; margin-bottom: 1rem; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1rem; font-weight: 300; color: var(--muted-color); }
+  form { display: flex; flex-direction: column; gap: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  label { text-align: left; font-size: 0.8rem; }
+  input { font-size: 0.9rem; padding: 0.6rem; }
+  .time-slots-section label { margin-bottom: 0.5rem; display: block; }
+  
+  .time-slots-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.75rem;
+  }
+  .time-slot-btn {
+    padding: 0.75rem 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .time-slot-btn:disabled {
+    background-color: var(--pico-form-element-disabled-background-color);
+    border-color: var(--pico-form-element-disabled-border-color);
+    color: var(--pico-form-element-disabled-color);
+    cursor: not-allowed;
+  }
+
+  /* --- INIZIO CORREZIONE DEFINITIVA --- */
+  .time-slot-btn.selected,
+  .time-slot-btn[aria-current="true"],
+  .time-slot-btn:active,
+  .time-slot-btn:focus {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: var(--text-on-dark) !important;
+    --pico-background-color: var(--primary) !important;
+    --pico-border-color: var(--primary) !important;
+    --pico-color: var(--text-on-dark) !important;
+    box-shadow: none !important;
+  }
+  /* --- FINE CORREZIONE DEFINITIVA --- */
+
+  .closed-notice { font-size: 0.9rem; width: 100%; text-align: center; padding: 1rem; background-color: #f7f7f7; border-radius: var(--pico-border-radius); }
+  button[type="submit"] { margin-top: 1rem; }
+  .message { padding: 10px; border-radius: 5px; margin-top: 1rem; text-align: center; }
   .message.success { background-color: #d4edda; color: #155724; }
   .message.error { background-color: #f8d7da; color: #721c24; }
+  @media(max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

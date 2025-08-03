@@ -1,108 +1,195 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { onMount } from 'svelte';
+  import { ArrowLeft } from 'lucide-svelte';
 
   let tables = [];
   let restaurantId;
   let newTableName = '';
   let newTableSeats = 2;
   let loading = true;
-  let message = '';
+  let message = { show: false, text: '', type: '' };
 
-  // Funzione per caricare i tavoli esistenti
   async function loadTables() {
     loading = true;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        loading = false;
+        return;
+    }
 
-    // Prima troviamo l'ID del ristorante dell'utente
     const { data: restaurantData } = await supabase
       .from('ristoranti')
       .select('id')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id)
       .single();
 
     if (restaurantData) {
       restaurantId = restaurantData.id;
-      
-      // Poi carichiamo i tavoli di quel ristorante
+
       const { data: tablesData, error } = await supabase
         .from('tavoli')
         .select('id, nome, posti')
         .eq('ristorante_id', restaurantId)
         .order('nome');
-      
+
       if (error) {
-        message = 'Errore nel caricamento tavoli: ' + error.message;
+          showNotification('Errore nel caricare i tavoli: ' + error.message, 'error');
       } else {
-        tables = tablesData;
+          if (tablesData) tables = tablesData;
       }
+    } else {
+        console.warn('Nessun ristorante trovato per questo utente.');
     }
+
     loading = false;
   }
 
-  // Al caricamento della pagina, eseguiamo la funzione
   onMount(loadTables);
 
-  // Funzione per aggiungere un nuovo tavolo
+  function showNotification(text, type, duration = 3000) {
+    message = { show: true, text, type };
+    setTimeout(() => { message = { show: false, text: '', type: '' }; }, duration);
+  }
+
   async function handleAddTable() {
     if (!newTableName || !restaurantId) return;
-    
-    const { data, error } = await supabase.from('tavoli').insert({
+
+    const { error } = await supabase.from('tavoli').insert({
       nome: newTableName,
       posti: newTableSeats,
       ristorante_id: restaurantId
     });
 
     if (error) {
-      message = 'Errore: ' + error.message;
+      showNotification('Errore: ' + error.message, 'error');
     } else {
       newTableName = '';
       newTableSeats = 2;
-      message = 'Tavolo aggiunto!';
-      await loadTables(); // Ricarica la lista dei tavoli
+      showNotification('Tavolo aggiunto!', 'success');
+      await loadTables();
     }
   }
 </script>
 
-<div class="tables-container">
-  <h1>Gestione Tavoli</h1>
-  <p>Aggiungi e visualizza i tavoli del tuo ristorante.</p>
+{#if message.show}
+  <div class="toast {message.type}">
+    {message.text}
+  </div>
+{/if}
 
-  <form on:submit|preventDefault={handleAddTable} class="add-form">
-    <h3>Aggiungi un nuovo tavolo</h3>
-    <input type="text" bind:value={newTableName} placeholder="Nome tavolo (es. T1, Veranda)" required />
-    <input type="number" bind:value={newTableSeats} min="1" required />
-    <button type of="submit">Aggiungi Tavolo</button>
-  </form>
+<main class="container">
+  <article>
+    <a href="/dashboard" class="back-link" aria-label="Torna alla dashboard">
+      <ArrowLeft size={24}/>
+    </a>
+    <img src="/logo.png" alt="Logo Zentable" class="logo">
 
-  {#if message}
-    <p class="message">{message}</p>
-  {/if}
+    <hgroup>
+      <h1>Gestione Tavoli</h1>
+      <h2>Aggiungi e visualizza i tavoli del tuo locale.</h2>
+    </hgroup>
 
-  <hr />
+    <form on:submit|preventDefault={handleAddTable} class="add-form">
+      <input type="text" bind:value={newTableName} placeholder="Nome tavolo (es. T1)" required />
+      <input type="number" bind:value={newTableSeats} min="1" placeholder="Posti" required />
+      <button type="submit" class="contrast">Aggiungi</button>
+    </form>
 
-  <h2>Tavoli Esistenti</h2>
-  {#if loading}
-    <p>Caricamento...</p>
-  {:else if tables.length === 0}
-    <p>Nessun tavolo ancora creato.</p>
-  {:else}
-    <ul>
-      {#each tables as table (table.id)}
-        <li>{table.nome} - {table.posti} posti</li>
-      {/each}
-    </ul>
-  {/if}
-</div>
+    <hr />
+
+    <div class="tables-grid">
+      {#if loading}
+        <p aria-busy="true">Caricamento tavoli...</p>
+      {:else if tables.length === 0}
+        <p>Nessun tavolo ancora creato.</p>
+      {:else}
+        {#each tables as table (table.id)}
+          <div class="table-item">
+            <div class="table-enso">
+              <span class="table-name">{table.nome}</span>
+            </div>
+            <div class="table-seats">{table.posti} posti</div>
+          </div>
+        {/each}
+      {/if}
+    </div>
+  </article>
+</main>
 
 <style>
-  .tables-container { max-width: 600px; margin: 40px auto; font-family: sans-serif; }
-  .add-form { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
-  input { padding: 8px; }
-  button { padding: 8px 12px; background-color: #007bff; color: white; border: none; cursor: pointer; }
-  hr { margin: 20px 0; }
-  ul { list-style-type: none; padding: 0; }
-  li { background-color: #f7f7f7; padding: 10px; margin-bottom: 5px; border-radius: 4px; }
-  .message { margin: 10px 0; }
+  main {
+    display: grid;
+    place-items: center;
+    min-height: 100svh;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  article {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 0;
+    padding: 2rem;
+  }
+  .logo { display: block; margin: 0 auto 1rem; width: 80px; }
+  .back-link { position: absolute; top: 1.5rem; left: 1.5rem; color: var(--muted-color); }
+  hgroup { margin-bottom: 2rem; text-align: center; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-weight: 300; color: var(--muted-color); font-size: 1rem; }
+
+  .add-form {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: 1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .tables-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+    min-height: 160px;
+  }
+  .table-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .table-enso {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 120px;
+    height: 120px;
+    background-image: url('/pennellata-nera.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .table-name {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-color);
+  }
+  .table-seats {
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: var(--muted-color);
+  }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    padding: 1rem; border-radius: 8px; z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: white;
+  }
+  .toast.success { background-color: #28a745; }
+  .toast.error { background-color: var(--primary); }
 </style>
