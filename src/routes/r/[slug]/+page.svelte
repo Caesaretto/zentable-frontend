@@ -140,7 +140,7 @@
         return;
     }
 
-    const { error } = await supabase.from('prenotazioni').insert({
+    const { data: newBookingData, error } = await supabase.from('prenotazioni').insert({
       ristorante_id: ristorante.id,
       tavolo_id: availableTable.id,
       data_ora: bookingStart.toISOString(),
@@ -148,18 +148,23 @@
       numero_coperti: bookingData.guests,
       nome_cliente: bookingData.name,
       telefono_cliente: bookingData.phone
-    });
+    }).select().single();
 
     if (error) {
-      setMessage(`Errore: ${error.message}`, 'error');
+      setMessage(`Errore nel salvataggio: ${error.message}`, 'error');
     } else {
-      setMessage('Prenotazione confermata! Grazie.', 'success');
-      prenotazioni = [...prenotazioni, { 
-          tavolo_id: availableTable.id, 
-          data_ora: bookingStart.toISOString(),
-          data_ora_fine: bookingEnd.toISOString(),
-          numero_coperti: bookingData.guests
-      }];
+      setMessage('Prenotazione confermata! Invio notifica...', 'success');
+      
+      // Chiama la Edge Function per inviare la notifica
+      const { error: funcError } = await supabase.functions.invoke('send-whatsapp-confirmation', {
+          body: { booking: newBookingData }
+      });
+
+      if (funcError) {
+          setMessage('Prenotazione salvata, ma errore invio notifica.', 'error');
+      }
+      
+      prenotazioni = [...prenotazioni, newBookingData];
       calculateAvailability();
     }
     loading = false;
@@ -249,7 +254,6 @@
   label { text-align: left; font-size: 0.8rem; }
   input { font-size: 0.9rem; padding: 0.6rem; }
   .time-slots-section label { margin-bottom: 0.5rem; display: block; }
-  
   .time-slots-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
@@ -266,22 +270,14 @@
     color: var(--pico-form-element-disabled-color);
     cursor: not-allowed;
   }
-
-  /* --- INIZIO CORREZIONE DEFINITIVA --- */
   .time-slot-btn.selected,
-  .time-slot-btn[aria-current="true"],
   .time-slot-btn:active,
   .time-slot-btn:focus {
     background-color: var(--primary) !important;
     border-color: var(--primary) !important;
     color: var(--text-on-dark) !important;
-    --pico-background-color: var(--primary) !important;
-    --pico-border-color: var(--primary) !important;
-    --pico-color: var(--text-on-dark) !important;
     box-shadow: none !important;
   }
-  /* --- FINE CORREZIONE DEFINITIVA --- */
-
   .closed-notice { font-size: 0.9rem; width: 100%; text-align: center; padding: 1rem; background-color: #f7f7f7; border-radius: var(--pico-border-radius); }
   button[type="submit"] { margin-top: 1rem; }
   .message { padding: 10px; border-radius: 5px; margin-top: 1rem; text-align: center; }
