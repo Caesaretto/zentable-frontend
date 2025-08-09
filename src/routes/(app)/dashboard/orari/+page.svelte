@@ -1,4 +1,4 @@
-<script>
+k<script>
   import { supabase } from '$lib/supabaseClient';
   import { onMount } from 'svelte';
   import { ArrowLeft } from 'lucide-svelte';
@@ -11,29 +11,48 @@
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: restaurantData } = await supabase
-        .from('ristoranti').select('id').eq('user_id', user.id).single();
-      
-      if (restaurantData) {
-        restaurantId = restaurantData.id;
-        const { data: scheduleData } = await supabase.from('orari').select().eq('ristorante_id', restaurantId);
+    if (!user) return;
 
+    const { data: restaurantData } = await supabase
+      .from('ristoranti').select('id').eq('user_id', user.id).single();
+    
+    if (restaurantData) {
+      restaurantId = restaurantData.id;
+      const { data: scheduleData } = await supabase.from('orari').select().eq('ristorante_id', restaurantId);
+
+      if (scheduleData && scheduleData.length > 0) {
         schedule = daysOfWeek.map((_, index) => {
           const dayIndex = index + 1;
-          const savedDay = scheduleData?.find(s => s.giorno_settimana === dayIndex);
-          return savedDay || {
-            giorno_settimana: dayIndex,
-            is_closed: true,
-            pranzo_apertura: null, pranzo_chiusura: null,
-            cena_apertura: null, cena_chiusura: null,
-            ristorante_id: restaurantId
+          return scheduleData.find(s => s.giorno_settimana === dayIndex) || {
+            giorno_settimana: dayIndex, is_closed: true, ristorante_id: restaurantId
           };
         });
+      } else {
+        const defaultSchedule = daysOfWeek.map((_, index) => ({
+          giorno_settimana: index + 1,
+          is_closed: true,
+          pranzo_apertura: null, pranzo_chiusura: null,
+          cena_apertura: null, cena_chiusura: null,
+          ristorante_id: restaurantId
+        }));
+        await supabase.from('orari').upsert(defaultSchedule);
+        schedule = defaultSchedule;
       }
     }
     loading = false;
   });
+
+  // Funzione corretta per reattività istantanea
+  function handleClosedToggle(daySchedule) {
+    if (daySchedule.is_closed) {
+      daySchedule.pranzo_apertura = null;
+      daySchedule.pranzo_chiusura = null;
+      daySchedule.cena_apertura = null;
+      daySchedule.cena_chiusura = null;
+    }
+    // Forza Svelte a "vedere" il cambiamento nell'array
+    schedule = schedule;
+  }
 
   function showNotification(text, type, duration = 3000) {
     message = { show: true, text, type };
@@ -42,14 +61,7 @@
 
   async function handleSaveSchedule() {
     loading = true;
-    const cleanedSchedule = schedule.map(day => {
-        if (day.is_closed) {
-            return { ...day, pranzo_apertura: null, pranzo_chiusura: null, cena_apertura: null, cena_chiusura: null };
-        }
-        return day;
-    });
-    
-    const { error } = await supabase.from('orari').upsert(cleanedSchedule, { onConflict: 'ristorante_id, giorno_settimana' });
+    const { error } = await supabase.from('orari').upsert(schedule, { onConflict: 'ristorante_id, giorno_settimana' });
 
     if (error) {
       showNotification('Errore: ' + error.message, 'error');
@@ -61,9 +73,7 @@
 </script>
 
 {#if message.show}
-  <div class="toast {message.type}">
-    {message.text}
-  </div>
+  <div class="toast {message.type}">{message.text}</div>
 {/if}
 
 <main class="container">
@@ -82,10 +92,9 @@
       <p aria-busy="true">Caricamento...</p>
     {:else}
       <div class="schedule-grid">
-        {#each daysOfWeek as day, i}
-          {@const daySchedule = schedule[i]}
+        {#each schedule as daySchedule (daySchedule.giorno_settimana)}
           <div class="day-row" class:closed={daySchedule.is_closed}>
-            <strong class="day-name">{day}</strong>
+            <strong class="day-name">{daysOfWeek[daySchedule.giorno_settimana - 1]}</strong>
             <div class="shifts">
               <div class="shift-group">
                 <span>Turno 1:</span>
@@ -101,13 +110,13 @@
               </div>
             </div>
             <label class="closed-toggle">
-              <input type="checkbox" role="switch" bind:checked={daySchedule.is_closed}>
+              <input type="checkbox" role="switch" bind:checked={daySchedule.is_closed} on:change={() => handleClosedToggle(daySchedule)}>
               Chiuso
             </label>
           </div>
         {/each}
       </div>
-      <button on:click={handleSaveSchedule} disabled={loading}>
+      <button on:click={handleSaveSchedule} disabled={loading} class="contrast">
         {loading ? 'Salvataggio...' : 'Salva Orari'}
       </button>
     {/if}
@@ -160,24 +169,12 @@
       font-size: 0.8rem;
   }
 
-  /* --- INIZIO CORREZIONE --- */
-  article button {
+  button.contrast {
       width: 100%;
-      background-color: var(--primary);
-      border-color: var(--primary);
-      color: var(--text-on-dark);
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      padding: 12px;
-      font-size: 1rem;
   }
-
-  article button:hover {
-      background-color: var(--primary-hover);
-      border-color: var(--primary-hover);
-  }
-  /* --- FINE CORREZIONE --- */
 
   input[type="checkbox"][role="switch"]:checked {
     background-color: var(--primary);
