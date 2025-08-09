@@ -12,22 +12,37 @@
     nome_proprietario: '',
     cognome_proprietario: ''
   };
-  let message = { show: false, text: '', type: '' };
+  let notification = { show: false, message: '', type: '' };
+  
+  let publicLink = '';
+  let copyButtonText = 'Copia Link';
+
+  function updatePublicLink() {
+    if (restaurant.nome) {
+      const slug = restaurant.nome.toLowerCase().replace(/\s+/g, '-');
+      publicLink = `https://zentable.netlify.app/r/${slug}`;
+    } else {
+      publicLink = '';
+    }
+  }
 
   onMount(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       userEmail = user.email;
       const { data } = await supabase.from('ristoranti').select().eq('user_id', user.id).single();
-      if (data) restaurant = data;
+      if (data) {
+        restaurant = data;
+        updatePublicLink(); // Calcola il link al caricamento
+      }
     }
     loading = false;
   });
   
-  function showNotification(text, type, duration = 3000) {
-    message = { show: true, text, type };
+  function showNotification(message, type, duration = 3000) {
+    notification = { show: true, message, type };
     setTimeout(() => {
-      message = { show: false, text: '', type: '' };
+      notification = { show: false, message: '', type: '' };
     }, duration);
   }
 
@@ -48,14 +63,21 @@
       showNotification('Errore: ' + error.message, 'error');
     } else {
       showNotification('Dati salvati con successo!', 'success');
+      updatePublicLink(); // Aggiorna il link dopo il salvataggio
     }
     loading = false;
   }
+
+  function copyToClipboard() {
+    navigator.clipboard.writeText(publicLink);
+    copyButtonText = 'Copiato!';
+    setTimeout(() => { copyButtonText = 'Copia Link'; }, 2000);
+  }
 </script>
 
-{#if message.show}
-  <div class="toast {message.type}">
-    {message.text}
+{#if notification.show}
+  <div class="toast {notification.type}">
+    {notification.message}
   </div>
 {/if}
 
@@ -87,104 +109,59 @@
           </label>
         </fieldset>
         
+        <hr>
+        
+        <label for="nome_ristorante">Nome Ristorante</label>
+        <input type="text" id="nome_ristorante" name="nome_ristorante" placeholder="Nome del locale" bind:value={restaurant.nome} required>
+        
         <fieldset class="form-grid">
-            <label>
-              Nome Ristorante
-              <input type="text" name="nome_ristorante" placeholder="Nome del locale" bind:value={restaurant.nome} required>
-            </label>
             <label>
                 Indirizzo
                 <input type="text" name="indirizzo" placeholder="Indirizzo del locale" bind:value={restaurant.indirizzo}>
             </label>
-        </fieldset>
-        
-        <fieldset class="form-grid">
             <label>
                 Telefono
                 <input type="tel" name="telefono" placeholder="Telefono del locale" bind:value={restaurant.telefono}>
             </label>
-            <label>
-              Email Account
-              <input type="email" name="email" value={userEmail} disabled title="L'email di login non può essere modificata da qui per motivi di sicurezza.">
-            </label>
         </fieldset>
+
+        <label for="email">Email Account</label>
+        <input type="email" id="email" name="email" value={userEmail} disabled>
 
         <button type="submit" disabled={loading}>
           {loading ? 'Salvataggio...' : 'Salva'}
         </button>
       </form>
+      
+      <hr>
+
+      <div class="public-link-section">
+        <label for="public-link">Il Tuo Link di Prenotazione Pubblico</label>
+        <div class="grid">
+          <input id="public-link" type="text" readonly bind:value={publicLink} placeholder="Salva il nome del ristorante per generare il link">
+          <button on:click={copyToClipboard} class="secondary" disabled={!publicLink}>{copyButtonText}</button>
+        </div>
+      </div>
     {/if}
   </article>
 </main>
 
 <style>
-  main {
-    display: grid;
-    place-items: center;
-    min-height: 100svh;
-    padding: 1rem;
-    box-sizing: border-box;
+  main { display: grid; place-items: center; min-height: 100svh; padding: 1rem; box-sizing: border-box; }
+  article { position: relative; width: 100%; max-width: 700px; margin: 0; padding: 2rem; }
+  .logo { display: block; margin: 0 auto 1rem; width: 80px; }
+  .back-link { position: absolute; top: 1.5rem; left: 1.5rem; color: var(--muted-color); }
+  hgroup { margin-bottom: 2rem; text-align: center; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-weight: 300; color: var(--muted-color); font-size: 1rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  button[type="submit"] { font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; background-color: var(--primary); border-color: var(--primary); }
+  
+  .public-link-section {
+    margin-top: 1.5rem;
+    text-align: left;
   }
-  article {
-    position: relative;
-    width: 100%;
-    max-width: 800px; /* Form più largo per due colonne */
-    margin: 0;
-    padding: 1.5rem 2rem;
-  }
-  .logo {
-    display: block;
-    margin: 0 auto 0.5rem;
-    width: 80px;
-  }
-  .back-link {
-    position: absolute;
-    top: 1.5rem;
-    left: 1.5rem;
-    color: var(--muted-color);
-  }
-  hgroup {
-      margin-bottom: 1.5rem; /* Margine corretto */
-      text-align: center; /* Titoli centrati */
-  }
-  h1 {
-      font-size: 1.5rem;
-  }
-  h2 {
-    font-weight: 300;
-    color: var(--muted-color);
-    font-size: 0.9rem;
-  }
-
-  form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem; /* Spazio tra i fieldset */
-  }
-  .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-  }
-  label {
-      text-align: left;
-      font-size: 0.8rem; /* Font più piccolo */
-      margin-bottom: 0;
-  }
-  input {
-      padding: 0.6rem; /* Padding ridotto */
-      font-size: 0.9rem;
-      margin-bottom: 0;
-  }
-
-  button[type="submit"] {
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      background-color: var(--primary);
-      border-color: var(--primary);
-      margin-top: 0.5rem;
-  }
+  
   .toast {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
     padding: 1rem; border-radius: 8px; z-index: 100;
@@ -193,9 +170,5 @@
   .toast.success { background-color: #28a745; }
   .toast.error { background-color: var(--primary); }
 
-  @media (max-width: 768px) {
-    .form-grid {
-      grid-template-columns: 1fr;
-    }
-  }
+  @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
 </style>

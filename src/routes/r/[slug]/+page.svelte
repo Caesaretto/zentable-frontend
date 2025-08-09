@@ -162,7 +162,11 @@
 
       if (funcError) {
           setMessage('Prenotazione salvata, ma errore invio notifica.', 'error');
-      }
+      };
+
+await supabase.functions.invoke('notify-restaurateur', {
+    body: { booking: newBookingData }
+});
       
       prenotazioni = [...prenotazioni, newBookingData];
       calculateAvailability();
