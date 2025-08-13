@@ -1,22 +1,7 @@
 <script>
-  import { supabase } from '$lib/supabaseClient';
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-
-  let session;
-
-  onMount(async () => {
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-
-    if (!session) {
-      goto('/login');
-    }
-  });
+  import DashboardHeader from '$lib/components/DashboardHeader.svelte';
 </script>
 
-{#if session}
-  <slot />
-{:else}
-  <p>Caricamento...</p>
-{/if}
+<DashboardHeader />
+
+<slot />
