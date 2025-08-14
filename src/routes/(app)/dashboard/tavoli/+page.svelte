@@ -13,10 +13,7 @@
   async function loadTables() {
     loading = true;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        loading = false;
-        return;
-    }
+    if (!user) return;
 
     const { data: restaurantData } = await supabase
       .from('ristoranti')
@@ -26,22 +23,17 @@
 
     if (restaurantData) {
       restaurantId = restaurantData.id;
-
-      const { data: tablesData, error } = await supabase
+      const { data: tablesData } = await supabase
         .from('tavoli')
         .select('id, nome, posti')
-        .eq('ristorante_id', restaurantId)
-        .order('nome');
-
-      if (error) {
-          showNotification('Errore nel caricare i tavoli: ' + error.message, 'error');
-      } else {
-          if (tablesData) tables = tablesData;
+        .eq('ristorante_id', restaurantId);
+      
+      if (tablesData) {
+        tables = tablesData.sort((a, b) => 
+          a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' })
+        );
       }
-    } else {
-        console.warn('Nessun ristorante trovato per questo utente.');
     }
-
     loading = false;
   }
 
@@ -54,7 +46,7 @@
 
   async function handleAddTable() {
     if (!newTableName || !restaurantId) return;
-
+    
     const { error } = await supabase.from('tavoli').insert({
       nome: newTableName,
       posti: newTableSeats,
@@ -84,7 +76,7 @@
       <ArrowLeft size={24}/>
     </a>
     <img src="/logo.png" alt="Logo Zentable" class="logo">
-
+    
     <hgroup>
       <h1>Gestione Tavoli</h1>
       <h2>Aggiungi e visualizza i tavoli del tuo locale.</h2>
@@ -137,7 +129,7 @@
   hgroup { margin-bottom: 2rem; text-align: center; }
   h1 { font-size: 1.5rem; }
   h2 { font-weight: 300; color: var(--muted-color); font-size: 1rem; }
-
+  
   .add-form {
     display: grid;
     grid-template-columns: 2fr 1fr auto;
@@ -154,12 +146,14 @@
     margin-top: 2rem;
     min-height: 160px;
   }
+
   .table-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
   }
+
   .table-enso {
     position: relative;
     display: flex;
@@ -172,6 +166,7 @@
     background-repeat: no-repeat;
     background-position: center;
   }
+
   .table-name {
     display: block;
     font-size: 1.8rem;
@@ -179,12 +174,14 @@
     line-height: 1;
     color: var(--text-color);
   }
+
   .table-seats {
     font-weight: 700;
     text-transform: uppercase;
     font-size: 0.8rem;
     color: var(--muted-color);
   }
+
   .toast {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
     padding: 1rem; border-radius: 8px; z-index: 100;

@@ -100,8 +100,13 @@
       
       if (restaurantData) {
         restaurantId = restaurantData.id;
-        const { data: tablesData } = await supabase.from('tavoli').select().eq('ristorante_id', restaurantId).order('nome');
-        if (tablesData) tables = tablesData;
+        const { data: tablesData } = await supabase.from('tavoli').select().eq('ristorante_id', restaurantId);
+        
+        if (tablesData) {
+            tables = tablesData.sort((a, b) => 
+              a.nome.localeCompare(b.nome, undefined, { numeric: true, sensitivity: 'base' })
+            );
+        }
         await loadDataForDate();
       } else {
         loading = false;
@@ -246,113 +251,39 @@
   <div class="toast {message.type}">{message.text}</div>
 {/if}
 
-{#if showCreateModal}
-  <div class="modal-overlay" on:click={() => showCreateModal = false}>
-    <article class="modal-content" on:click|stopPropagation>
-      <hgroup>
-        <h2>Nuova Prenotazione</h2>
-        <h3>
-          Tavolo: {tables.find(t => t.id === newBooking.tavolo_id)?.nome}
-          alle {new Date(newBooking.data_ora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-        </h3>
-      </hgroup>
-      <form on:submit|preventDefault={handleSaveBooking}>
-        <div class="grid">
-          <label> Nome Cliente
-            <input type="text" bind:value={newBooking.nome_cliente} required>
-          </label>
-        </div>
-        <div class="grid">
-          <label> Coperti
-            <input type="number" bind:value={newBooking.numero_coperti} min="1" required>
-          </label>
-          <label> Durata (ore)
-            <input type="number" bind:value={newBooking.durata} min="0.5" step="0.5" required>
-          </label>
-        </div>
-        <label> Telefono
-          <input type="tel" bind:value={newBooking.telefono_cliente}>
-        </label>
-        <label> Note
-          <textarea bind:value={newBooking.note} rows="2"></textarea>
-        </label>
-        <button type="submit" disabled={loading}>{loading ? 'Salvataggio...' : 'Salva Prenotazione'}</button>
-      </form>
-    </article>
-  </div>
-{/if}
-
-{#if showEditModal}
-   <div class="modal-overlay" on:click={() => showEditModal = false}>
-    <article class="modal-content" on:click|stopPropagation>
-      <hgroup>
-        <h2>Dettagli Prenotazione</h2>
-        <h3>
-            Tavolo: {tables.find(t => t.id === selectedBooking.tavolo_id)?.nome}
-            alle {new Date(selectedBooking.data_ora).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-        </h3>
-      </hgroup>
-       <form on:submit|preventDefault={handleUpdateBooking}>
-        <label> Nome Cliente
-          <input type="text" bind:value={selectedBooking.nome_cliente} required>
-        </label>
-         <div class="grid">
-            <label> Coperti
-              <input type="number" bind:value={selectedBooking.numero_coperti} min="1" required>
-            </label>
-            <label> Durata (ore)
-              <input type="number" bind:value={selectedBooking.durata} min="0.5" step="0.5" required>
-            </label>
-        </div>
-        <label> Telefono
-          <input type="tel" bind:value={selectedBooking.telefono_cliente}>
-        </label>
-         <label> Note
-          <textarea bind:value={selectedBooking.note} rows="2"></textarea>
-        </label>
-        <div class="grid">
-            <button type="submit" disabled={loading}>{loading ? 'Salvataggio...' : 'Aggiorna'}</button>
-            <button type="button" class="secondary" on:click={handleDeleteBooking} disabled={loading}>Cancella</button>
-        </div>
-      </form>
-    </article>
-  </div>
-{/if}
-
 <main class="container">
   <article>
-    <a href="/dashboard" class="back-link"><ArrowLeft size={24}/></a>
-    <img src="/logo.png" alt="Logo Zentable" class="logo">
     <hgroup>
-      <h1>Prenotazioni</h1>
-      <h2>Visualizza e gestisci le prenotazioni del giorno.</h2>
+      <h1>Timeline</h1>
+      <h2>Visualizza e gestisci le tue prenotazioni.</h2>
     </hgroup>
   
     <div class="controls">
         <div class="control-item">
             <label for="date">Data</label>
             <div class="date-input-group">
-                <button on:click={goToPreviousDay} class="icon-button" aria-label="Giorno precedente"><ChevronLeft /></button>
+                <button on:click={goToPreviousDay} class="icon-button" aria-label="Giorno precedente"><ChevronLeft size={20}/></button>
                 <input type="date" id="date" bind:value={selectedDate} on:change={loadDataForDate}>
-                <button on:click={goToNextDay} class="icon-button" aria-label="Giorno successivo"><ChevronRight /></button>
+                <button on:click={goToNextDay} class="icon-button" aria-label="Giorno successivo"><ChevronRight size={20}/></button>
             </div>
         </div>
+        
+        {#if schedule.pranzo_apertura}
         <div class="control-item">
-            {#if schedule.pranzo_apertura}
+            <label>Turno 1</label>
             <button on:click={() => { selectedShift = 1; updateTimelineView(); }} class:active={selectedShift === 1}>
-                <span class="shift-label">Turno 1</span>
-                <span class="shift-time">{formatTime(schedule.pranzo_apertura)} - {formatTime(schedule.pranzo_chiusura)}</span>
+                {formatTime(schedule.pranzo_apertura)} - {formatTime(schedule.pranzo_chiusura)}
             </button>
-            {/if}
         </div>
+        {/if}
+        {#if schedule.cena_apertura}
         <div class="control-item">
-            {#if schedule.cena_apertura}
+            <label>Turno 2</label>
             <button on:click={() => { selectedShift = 2; updateTimelineView(); }} class:active={selectedShift === 2}>
-                <span class="shift-label">Turno 2</span>
-                <span class="shift-time">{formatTime(schedule.cena_apertura)} - {formatTime(schedule.cena_chiusura)}</span>
+                {formatTime(schedule.cena_apertura)} - {formatTime(schedule.cena_chiusura)}
             </button>
-            {/if}
         </div>
+        {/if}
     </div>
     
     {#if loading}
@@ -393,25 +324,30 @@
 
 <style>
   main { display: grid; place-items: center; min-height: 100svh; padding: 1rem; }
-  article { position: relative; width: 100%; max-width: 95%; height: 95vh; margin: 0; padding: 1.5rem 2rem; display: flex; flex-direction: column; }
-  .logo { display: block; margin: 0 auto 1rem; width: 80px; }
-  .back-link { position: absolute; top: 1.5rem; left: 1.5rem; color: var(--muted-color); }
+  article { 
+    position: relative; 
+    width: 100%; 
+    max-width: 95%; 
+    height: 95vh; 
+    margin: 0; 
+    padding: 1rem 1.5rem; 
+    display: flex; 
+    flex-direction: column; 
+  }
   hgroup { margin-bottom: 1rem; text-align: center; }
   h1 { font-size: 1.5rem; }
   h2 { font-weight: 300; color: var(--muted-color); font-size: 1rem; }
   
-  .controls {
-    margin-bottom: 1rem;
+.controls {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     align-items: flex-end;
-    flex-shrink: 0;
+    margin-bottom: 1rem;
   }
   .control-item {
       display: flex;
       flex-direction: column;
-      width: 100%;
   }
   .control-item label {
       font-size: 0.8rem;
@@ -423,29 +359,30 @@
   
   .date-input-group {
     display: flex;
-    width: 100%;
   }
   
-  .date-input-group input, .date-input-group button, .controls button {
-      height: 58px;
+  .date-input-group input, .date-input-group button, .shift-button {
+      height: 45px; /* Altezza uniforme e ridotta */
       box-sizing: border-box;
       padding: 0.5rem;
+      font-size: 0.9rem;
+      margin: 0;
   }
 
   .date-input-group input {
       flex-grow: 1;
-      border-right: none;
-      border-left: none;
       border-radius: 0;
       text-align: center;
-      min-width: 100px;
   }
   
   .icon-button {
-      padding: 0 0.75rem;
-      background-color: var(--card-background-color);
+      width: 45px; /* Larghezza fissa e ridotta */
+      flex-shrink: 0;
       border: 1px solid var(--border-color);
-      color: var(--muted-color);
+      background-color: var(--card-background-color);
+      color: var(--text-color);
+      display: grid;
+      place-items: center;
   }
   .icon-button:first-child {
       border-right: none;
@@ -456,54 +393,26 @@
       border-radius: 0 var(--pico-border-radius) var(--pico-border-radius) 0;
   }
 
-  .controls button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+  .shift-button {
+    width: 100%;
     background-color: #f3f4f6;
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     color: var(--text-color);
+    border-radius: var(--pico-border-radius);
+    font-weight: 700;
   }
 
-  .controls button.active {
+  .shift-button.active {
     background-color: var(--primary);
     border-color: var(--primary);
     color: var(--text-on-dark);
   }
-  .shift-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-  .shift-time { font-size: 0.9rem; }
 
   .timeline-wrapper { overflow: auto; flex-grow: 1; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);}
   .timeline-grid { display: grid; grid-template-columns: 120px repeat(var(--time-slots), minmax(120px, 1fr)); gap: 1px; background-color: #ccc; }
   .header-cell { background-color: #f8f9fa; padding: 10px; text-align: center; font-weight: bold; position: sticky; top: 0; z-index: 3; }
-  .table-header { z-index: 4; }
   .table-name { background-color: #f8f9fa; text-align: right; padding: 10px 15px; font-weight: bold; position: sticky; left: 0; z-index: 2; }
-  
-  .grid-cell { 
-    position: relative;
-    z-index: 1;
-    background-color: white; 
-    min-height: 40px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 12px; 
-    border: none; 
-    padding: 0; 
-    cursor: pointer;
-  }
-  
+  .grid-cell { position: relative; z-index: 1; background-color: white; min-height: 40px; display: flex; align-items: center; justify-content: center; font-size: 12px; border: none; padding: 0; cursor: pointer; }
   .time-slot:hover { background-color: #e0efff; }
   .booking-cell { background-color: var(--primary); border: 1px solid var(--primary-hover); color: var(--text-on-dark); text-transform: uppercase; font-weight: 700; overflow: hidden; justify-content: flex-start; text-align: left; padding: 5px; }
-  .empty-state { padding: 2rem; text-align: center; color: var(--muted-color); }
-  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 10; }
-  .modal-content { width: 90%; max-width: 500px; }
-  .modal-content .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-  .modal-content button { font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
-  .modal-content button[type="submit"] { background-color: var(--primary); border-color: var(--primary); }
-  .modal-content button.secondary { background-color: var(--muted-color); border-color: var(--muted-color); }
-  .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 1rem; border-radius: 8px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15); color: white; }
-  .toast.success { background-color: #28a745; }
-  .toast.error { background-color: var(--primary); }
 </style>
