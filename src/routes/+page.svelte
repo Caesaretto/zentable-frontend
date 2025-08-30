@@ -34,10 +34,7 @@
     <span class="user-welcome">
       Ciao, {nome_proprietario || session.user.email.split('@')[0]}
     </span>
-    <div class="user-actions">
-        <a href="/dashboard" class="contrast">La Tua ZENboard</a>
-        <button on:click={handleLogout} class="logout-button">Logout</button>
-    </div>
+    <button on:click={handleLogout} class="logout-button">Logout</button>
   </div>
 {/if}
 
@@ -52,12 +49,16 @@
             </div>
             
             <p class="description">
-                Una piattaforma di gestione intelligente,<br>pensata per chi lavora da chi lavora (e resta zen).
+                Una piattaforma di gestione intelligente,<br>pensata per chi lavora da chi lavora (e resta <span class="accent">zen</span>).
             </p>
 
             <div class="cta-buttons">
-                <a href="/register" class="btn-brush primary"><span>Diventa<br>Zen</span></a>
-                <a href="/login" class="btn-brush secondary"><span>Accedi</span></a>
+                {#if session}
+                    <a href="/dashboard" class="btn-brush single"><span>La Tua Zenboard</span></a>
+                {:else}
+                    <a href="/register" class="btn-brush primary"><span>Diventa<br>Zen</span></a>
+                    <a href="/login" class="btn-brush secondary"><span>Accedi</span></a>
+                {/if}
             </div>
         </div>
     </section>
@@ -96,67 +97,59 @@
             <p class="price">29€ <span class="per-month">/ mese</span></p>
             
             <div class="pricing-features">
-                <div class="pricing-item">
-                    <img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon">
-                    <span>Prenotazioni Illimitate</span>
-                </div>
-                <div class="pricing-item">
-                    <img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon">
-                    <span>Tavoli Illimitati</span>
-                </div>
-                <div class="pricing-item">
-                    <img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon">
-                    <span>Notifiche Email Illimitate</span>
-                </div>
-                <div class="pricing-item">
-                    <img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon">
-                    <span>1.000 WhatsApp/mese Inclusi</span>
-                </div>
-                <div class="pricing-item">
-                    <img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon">
-                    <span>Supporto Zen</span>
-                </div>
+                <div class="pricing-item"><img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon"><span>Prenotazioni Illimitate</span></div>
+                <div class="pricing-item"><img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon"><span>Tavoli Illimitati</span></div>
+                <div class="pricing-item"><img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon"><span>Notifiche Email Illimitate</span></div>
+                <div class="pricing-item"><img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon"><span>1.000 WhatsApp/mese Inclusi</span></div>
+                <div class="pricing-item"><img src="/enso-piccolo.png" alt="Enso icon" class="enso-icon"><span>Supporto Zen</span></div>
             </div>
-            <a href="/register" role="button" class="contrast">Inizia la Tua Prova Gratuita</a>
+            
+            {#if session}
+                <a href="/dashboard/abbonamento" role="button" class="contrast">Gestisci Abbonamento</a>
+            {:else}
+                <a href="/register" role="button" class="contrast">Inizia la Tua Prova Gratuita</a>
+            {/if}
         </article>
     </section>
 </div>
 
-
 <style>
   .page-wrapper { width: 100%; }
   section { padding: 4rem 2rem; box-sizing: border-box; }
-  
-  .hero {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    text-align: center;
-  }
+  .hero { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; text-align: center; }
   .hero-content { max-width: 800px; }
   .logo { width: 180px; height: auto; margin-bottom: 2rem; }
   .headings h2 { font-size: 1.6rem; font-weight: 700; margin: 0; white-space: nowrap; }
   .tagline { font-size: 1.4rem; color: var(--muted-color); margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 300; }
   .tagline .accent { color: var(--primary); font-weight: 700; }
   .description { font-size: 1rem; line-height: 1.6; margin-bottom: 1rem; }
+  .description .accent { color: var(--primary); font-weight: 700; text-transform: uppercase; }
   .cta-buttons { margin-top: 2rem; display: flex; gap: 2.5rem; align-items: center; justify-content: center; }
   .btn-brush {
     position: relative; display: flex; justify-content: center; align-items: center;
-    width: 180px; height: 180px; text-decoration: none;
-    text-transform: uppercase; letter-spacing: 0.1em; transition: transform 0.2s;
-    line-height: 1.2; box-sizing: border-box; border: none; background-size: contain;
-    background-repeat: no-repeat; background-position: center;
-    font-weight: 700;
+    width: 180px; height: 180px; text-decoration: none; text-transform: uppercase; 
+    letter-spacing: 0.1em; transition: transform 0.2s; line-height: 1.2;
+    box-sizing: border-box; border: none; background-size: contain;
+    background-repeat: no-repeat; background-position: center; font-weight: 700;
   }
   .btn-brush span { position: relative; z-index: 1; }
   .btn-brush:hover { transform: scale(1.05); }
   .btn-brush.primary { background-image: url('/pennellata-nera.png'); color: var(--primary); }
   .btn-brush.secondary { background-image: url('/pennellata-rossa.png'); color: var(--text-color); }
+  .btn-brush.single { 
+      background-image: url('/pennellata-nera.png'); 
+      color: var(--primary); /* CORREZIONE: da bianco a rosso */
+      font-size: 1.1rem; 
+  }
   
   .user-panel { position: absolute; top: 2rem; right: 2rem; display: flex; align-items: center; gap: 1rem; }
   .user-welcome { font-weight: 700; }
+  .logout-button {
+    background-color: var(--primary); color: white; border: none;
+    padding: 0.5rem 1rem; border-radius: var(--pico-border-radius);
+    font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+    cursor: pointer;
+  }
   
   #about { background-color: var(--card-background-color); }
   #about hgroup, #prezzi hgroup { text-align: center; margin-bottom: 3rem; }

@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from '$lib/supabaseClient';
-  import { Settings, LayoutGrid, Calendar, Clock, Users, CreditCard } from 'lucide-svelte';
+  import { Settings, LayoutGrid, Calendar, Clock, Users } from 'lucide-svelte';
 
   let restaurantName = 'il tuo locale';
 
@@ -21,27 +21,34 @@
 </script>
 
 <div class="dashboard-container">
-  <hgroup>
-    <h1>La Tua <span class="accent">ZEN</span>board</h1>
-    <h2>{restaurantName}</h2>
-  </hgroup>
+  <div class="main-content">
+    
+    <a href="/">
+      <img src="/logo.png" alt="Logo Zentable" class="logo">
+    </a>
 
-  <div class="navigation-grid">
-    <div class="nav-item">
-      <a href="/dashboard/timeline" class="nav-button"><Calendar color="black" size={60} strokeWidth={1.5} /></a>
-      <div class="nav-label">Prenotazioni</div>
-    </div>
-    <div class="nav-item">
-      <a href="/dashboard/tavoli" class="nav-button"><LayoutGrid color="black" size={60} strokeWidth={1.5} /></a>
-      <div class="nav-label">Tavoli</div>
-    </div>
-    <div class="nav-item">
-      <a href="/dashboard/clienti" class="nav-button"><Users color="black" size={60} strokeWidth={1.5} /></a>
-      <div class="nav-label">Clienti</div>
-    </div>
-    <div class="nav-item">
-      <a href="/dashboard/orari" class="nav-button"><Clock color="black" size={60} strokeWidth={1.5} /></a>
-      <div class="nav-label">Orari</div>
+    <hgroup>
+      <h1>La Tua <span class="accent">ZEN</span>board</h1>
+      <h2>{restaurantName}</h2>
+    </hgroup>
+
+    <div class="navigation-grid">
+      <div class="nav-item">
+        <a href="/dashboard/timeline" class="nav-button"><Calendar color="black" size={60} strokeWidth={1.5} /></a>
+        <div class="nav-label">Prenotazioni</div>
+      </div>
+      <div class="nav-item">
+        <a href="/dashboard/tavoli" class="nav-button"><LayoutGrid color="black" size={60} strokeWidth={1.5} /></a>
+        <div class="nav-label">Tavoli</div>
+      </div>
+       <div class="nav-item">
+        <a href="/dashboard/clienti" class="nav-button"><Users color="black" size={60} strokeWidth={1.5} /></a>
+        <div class="nav-label">Clienti</div>
+      </div>
+      <div class="nav-item">
+        <a href="/dashboard/orari" class="nav-button"><Clock color="black" size={60} strokeWidth={1.5} /></a>
+        <div class="nav-label">Orari</div>
+      </div>
     </div>
   </div>
 </div>
@@ -50,12 +57,22 @@
   .dashboard-container {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: center; /* Centra verticalmente */
     align-items: center;
-    min-height: calc(100vh - 80px); /* Calcola l'altezza meno l'header */
-    padding: 2rem;
+    min-height: calc(100vh - 75px); /* Altezza meno l'header */
+    padding: 1rem;
     box-sizing: border-box;
     text-align: center;
+  }
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+  .logo {
+    width: 150px; /* Logo leggermente più piccolo per bilanciare */
+    margin-bottom: 2rem;
   }
   hgroup { margin-bottom: 2.5rem; }
   h1 { font-size: 2rem; }
